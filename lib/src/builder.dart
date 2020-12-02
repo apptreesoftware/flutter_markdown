@@ -190,7 +190,7 @@ class MarkdownBuilder implements md.NodeVisitor {
       } else if (tag == 'tr') {
         final length = _tables.single.rows.length;
         BoxDecoration decoration = styleSheet.tableCellsDecoration;
-        if (length == 0 || length % 2 == 1) decoration = null;
+        //if (length == 0 || length % 2 == 1) decoration = null;
         _tables.single.rows.add(TableRow(
           decoration: decoration,
           children: <Widget>[],
@@ -338,6 +338,14 @@ class MarkdownBuilder implements md.NodeVisitor {
           border: styleSheet.tableBorder,
           children: _tables.removeLast().rows,
         );
+        if (styleSheet.tableColumnWidth is IntrinsicColumnWidth) {
+          child = SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: IntrinsicWidth(
+              child: child,
+            ),
+          );
+        }
       } else if (tag == 'blockquote') {
         _isInBlockquote = false;
         child = DecoratedBox(
@@ -476,13 +484,22 @@ class MarkdownBuilder implements md.NodeVisitor {
   }
 
   Widget _buildTableCell(List<Widget> children, {TextAlign textAlign}) {
+    var wrapAlignment = WrapAlignment.start;
+    if (textAlign == TextAlign.right || textAlign == TextAlign.end) {
+      wrapAlignment = WrapAlignment.end;
+    } else if (textAlign == TextAlign.center) {
+      wrapAlignment = WrapAlignment.center;
+    }
     return TableCell(
       child: Padding(
         padding: styleSheet.tableCellsPadding,
         child: DefaultTextStyle(
           style: styleSheet.tableBody,
           textAlign: textAlign,
-          child: Wrap(children: children),
+          child: Wrap(
+            alignment: wrapAlignment,
+            children: children,
+          ),
         ),
       ),
     );
