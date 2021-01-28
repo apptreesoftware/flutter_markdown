@@ -353,10 +353,22 @@ class MarkdownBuilder implements md.NodeVisitor {
         );
 
         if (styleSheet.tableColumnWidth is IntrinsicColumnWidth) {
-          child = SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: IntrinsicWidth(
-              child: child,
+          var scrollController = ScrollController();
+          child = SafeArea(
+            top: false,
+            right: false,
+            left: false,
+            bottom: true,
+            child: Scrollbar(
+              controller: scrollController,
+              isAlwaysShown: true,
+              child: SingleChildScrollView(
+                controller: scrollController,
+                scrollDirection: Axis.horizontal,
+                child: IntrinsicWidth(
+                  child: child,
+                ),
+              ),
             ),
           );
         }
