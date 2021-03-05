@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:markdown/markdown.dart' as md;
 import 'package:meta/meta.dart';
 
@@ -19,12 +20,12 @@ import 'style_sheet.dart';
 /// Markdown link tag in the document.
 ///
 /// Used by [MarkdownWidget.onTapLink].
-typedef void MarkdownTapLinkCallback(String text, String href, String title);
+typedef void MarkdownTapLinkCallback(String text, String? href, String title);
 
 /// Signature for custom image widget.
 ///
 /// Used by [MarkdownWidget.imageBuilder]
-typedef Widget MarkdownImageBuilder(Uri uri, String title, String alt);
+typedef Widget MarkdownImageBuilder(Uri uri, String? title, String? alt);
 
 /// Signature for custom checkbox widget.
 ///
@@ -51,7 +52,7 @@ abstract class MarkdownElementBuilder {
   /// to [preferredStyle].
   ///
   /// If you needn't build a widget, return null.
-  Widget visitText(md.Text text, TextStyle preferredStyle) => null;
+  Widget? visitText(md.Text text, TextStyle? preferredStyle) => null;
 
   /// Called when an Element has been reached, after its children have been
   /// visited.
@@ -60,7 +61,7 @@ abstract class MarkdownElementBuilder {
   /// to [preferredStyle].
   ///
   /// If you needn't build a widget, return null.
-  Widget visitElementAfter(md.Element element, TextStyle preferredStyle) =>
+  Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) =>
       null;
 }
 
@@ -71,6 +72,40 @@ abstract class MarkdownElementBuilder {
 /// [platform] - create MarkdownStyleSheet based on the Platform where the
 /// is running on. Material on Android and Cupertino on iOS
 enum MarkdownStyleSheetBaseTheme { material, cupertino, platform }
+
+/// Enumeration of alignment strategies for the cross axis of list items.
+enum MarkdownListItemCrossAxisAlignment {
+  /// Uses [CrossAxisAlignment.baseline] for the row the bullet and the list
+  /// item are placed in.
+  ///
+  /// This alignment will ensure that the bullet always lines up with
+  /// the list text on the baseline.
+  ///
+  /// However, note that this alignment does not support intrinsic height
+  /// measurements because [RenderFlex] does not support it for
+  /// [CrossAxisAlignment.baseline].
+  /// See https://github.com/flutter/flutter_markdown/issues/311 for cases,
+  /// where this might be a problem for you.
+  ///
+  /// See also:
+  /// * [start], which allows for intrinsic height measurements.
+  baseline,
+
+  /// Uses [CrossAxisAlignment.start] for the row the bullet and the list item
+  /// are placed in.
+  ///
+  /// This alignment will ensure that intrinsic height measurements work.
+  ///
+  /// However, note that this alignment might not line up the bullet with the
+  /// list text in the way you would expect in certain scenarios.
+  /// See https://github.com/flutter/flutter_markdown/issues/169 for example
+  /// cases that do not produce expected results.
+  ///
+  /// See also:
+  /// * [baseline], which will position the bullet and list item on the
+  ///   baseline.
+  start,
+}
 
 /// A base class for widgets that parse and display Markdown.
 ///
@@ -87,13 +122,14 @@ abstract class MarkdownWidget extends StatefulWidget {
   ///
   /// The [data] argument must not be null.
   const MarkdownWidget({
-    Key key,
-    @required this.data,
+    Key? key,
+    required this.data,
     this.selectable = false,
     this.styleSheet,
     this.styleSheetTheme = MarkdownStyleSheetBaseTheme.material,
     this.syntaxHighlighter,
     this.onTapLink,
+    this.onTapText,
     this.imageDirectory,
     this.blockSyntaxes,
     this.inlineSyntaxes,
@@ -102,10 +138,9 @@ abstract class MarkdownWidget extends StatefulWidget {
     this.checkboxBuilder,
     this.builders = const {},
     this.fitContent = false,
-  })  : assert(data != null),
-        assert(selectable != null),
-        assert(builders != null),
-        super(key: key);
+    this.listItemCrossAxisAlignment =
+        MarkdownListItemCrossAxisAlignment.baseline,
+  }) : super(key: key);
 
   /// The Markdown to display.
   final String data;
@@ -118,40 +153,43 @@ abstract class MarkdownWidget extends StatefulWidget {
   /// The styles to use when displaying the Markdown.
   ///
   /// If null, the styles are inferred from the current [Theme].
-  final MarkdownStyleSheet styleSheet;
+  final MarkdownStyleSheet? styleSheet;
 
   /// Setting to specify base theme for MarkdownStyleSheet
   ///
   /// Default to [MarkdownStyleSheetBaseTheme.material]
-  final MarkdownStyleSheetBaseTheme styleSheetTheme;
+  final MarkdownStyleSheetBaseTheme? styleSheetTheme;
 
   /// The syntax highlighter used to color text in `pre` elements.
   ///
   /// If null, the [MarkdownStyleSheet.code] style is used for `pre` elements.
-  final SyntaxHighlighter syntaxHighlighter;
+  final SyntaxHighlighter? syntaxHighlighter;
 
   /// Called when the user taps a link.
-  final MarkdownTapLinkCallback onTapLink;
+  final MarkdownTapLinkCallback? onTapLink;
+
+  /// Default tap handler used when [selectable] is set to true
+  final VoidCallback? onTapText;
 
   /// The base directory holding images referenced by Img tags with local or network file paths.
-  final String imageDirectory;
+  final String? imageDirectory;
 
   /// Collection of custom block syntax types to be used parsing the Markdown data.
-  final List<md.BlockSyntax> blockSyntaxes;
+  final List<md.BlockSyntax>? blockSyntaxes;
 
   /// Collection of custom inline syntax types to be used parsing the Markdown data.
-  final List<md.InlineSyntax> inlineSyntaxes;
+  final List<md.InlineSyntax>? inlineSyntaxes;
 
   /// Markdown syntax extension set
   ///
   /// Defaults to [md.ExtensionSet.gitHubFlavored]
-  final md.ExtensionSet extensionSet;
+  final md.ExtensionSet? extensionSet;
 
   /// Call when build an image widget.
-  final MarkdownImageBuilder imageBuilder;
+  final MarkdownImageBuilder? imageBuilder;
 
   /// Call when build a checkbox widget.
-  final MarkdownCheckboxBuilder checkboxBuilder;
+  final MarkdownCheckboxBuilder? checkboxBuilder;
 
   /// Render certain tags, usually used with [extensionSet]
   ///
@@ -169,10 +207,17 @@ abstract class MarkdownWidget extends StatefulWidget {
   /// Whether to allow the widget to fit the child content.
   final bool fitContent;
 
+  /// Controls the cross axis alignment for the bullet and list item content
+  /// in lists.
+  ///
+  /// Defaults to [MarkdownListItemCrossAxisAlignment.baseline], which
+  /// does not allow for intrinsic height measurements.
+  final MarkdownListItemCrossAxisAlignment listItemCrossAxisAlignment;
+
   /// Subclasses should override this function to display the given children,
   /// which are the parsed representation of [data].
   @protected
-  Widget build(BuildContext context, List<Widget> children);
+  Widget build(BuildContext context, List<Widget>? children);
 
   @override
   _MarkdownWidgetState createState() => _MarkdownWidgetState();
@@ -180,7 +225,7 @@ abstract class MarkdownWidget extends StatefulWidget {
 
 class _MarkdownWidgetState extends State<MarkdownWidget>
     implements MarkdownBuilderDelegate {
-  List<Widget> _children;
+  List<Widget>? _children;
   final List<GestureRecognizer> _recognizers = <GestureRecognizer>[];
 
   @override
@@ -234,6 +279,8 @@ class _MarkdownWidgetState extends State<MarkdownWidget>
       checkboxBuilder: widget.checkboxBuilder,
       builders: widget.builders,
       fitContent: widget.fitContent,
+      listItemCrossAxisAlignment: widget.listItemCrossAxisAlignment,
+      onTapText: widget.onTapText,
     );
 
     _children = builder.build(astNodes);
@@ -248,11 +295,11 @@ class _MarkdownWidgetState extends State<MarkdownWidget>
   }
 
   @override
-  GestureRecognizer createLink(String text, String href, String title) {
+  GestureRecognizer createLink(String text, String? href, String title) {
     final TapGestureRecognizer recognizer = TapGestureRecognizer()
       ..onTap = () {
         if (widget.onTapLink != null) {
-          widget.onTapLink(text, href, title);
+          widget.onTapLink!(text, href, title);
         }
       };
     _recognizers.add(recognizer);
@@ -263,7 +310,7 @@ class _MarkdownWidgetState extends State<MarkdownWidget>
   TextSpan formatText(MarkdownStyleSheet styleSheet, String code) {
     code = code.replaceAll(RegExp(r'\n$'), '');
     if (widget.syntaxHighlighter != null) {
-      return widget.syntaxHighlighter.format(code);
+      return widget.syntaxHighlighter!.format(code);
     }
     return TextSpan(style: styleSheet.code, text: code);
   }
@@ -284,20 +331,23 @@ class _MarkdownWidgetState extends State<MarkdownWidget>
 class MarkdownBody extends MarkdownWidget {
   /// Creates a non-scrolling widget that parses and displays Markdown.
   const MarkdownBody({
-    Key key,
-    @required String data,
+    Key? key,
+    required String data,
     bool selectable = false,
-    MarkdownStyleSheet styleSheet,
-    MarkdownStyleSheetBaseTheme styleSheetTheme,
-    SyntaxHighlighter syntaxHighlighter,
-    MarkdownTapLinkCallback onTapLink,
-    String imageDirectory,
-    List<md.BlockSyntax> blockSyntaxes,
-    List<md.InlineSyntax> inlineSyntaxes,
-    md.ExtensionSet extensionSet,
-    MarkdownImageBuilder imageBuilder,
-    MarkdownCheckboxBuilder checkboxBuilder,
+    MarkdownStyleSheet? styleSheet,
+    MarkdownStyleSheetBaseTheme? styleSheetTheme,
+    SyntaxHighlighter? syntaxHighlighter,
+    MarkdownTapLinkCallback? onTapLink,
+    VoidCallback? onTapText,
+    String? imageDirectory,
+    List<md.BlockSyntax>? blockSyntaxes,
+    List<md.InlineSyntax>? inlineSyntaxes,
+    md.ExtensionSet? extensionSet,
+    MarkdownImageBuilder? imageBuilder,
+    MarkdownCheckboxBuilder? checkboxBuilder,
     Map<String, MarkdownElementBuilder> builders = const {},
+    MarkdownListItemCrossAxisAlignment listItemCrossAxisAlignment =
+        MarkdownListItemCrossAxisAlignment.baseline,
     this.shrinkWrap = true,
     this.fitContent = true,
   }) : super(
@@ -308,6 +358,7 @@ class MarkdownBody extends MarkdownWidget {
           styleSheetTheme: styleSheetTheme,
           syntaxHighlighter: syntaxHighlighter,
           onTapLink: onTapLink,
+          onTapText: onTapText,
           imageDirectory: imageDirectory,
           blockSyntaxes: blockSyntaxes,
           inlineSyntaxes: inlineSyntaxes,
@@ -315,6 +366,7 @@ class MarkdownBody extends MarkdownWidget {
           imageBuilder: imageBuilder,
           checkboxBuilder: checkboxBuilder,
           builders: builders,
+          listItemCrossAxisAlignment: listItemCrossAxisAlignment,
         );
 
   /// See [ScrollView.shrinkWrap]
@@ -324,8 +376,8 @@ class MarkdownBody extends MarkdownWidget {
   final bool fitContent;
 
   @override
-  Widget build(BuildContext context, List<Widget> children) {
-    if (children.length == 1) return children.single;
+  Widget build(BuildContext context, List<Widget>? children) {
+    if (children!.length == 1) return children.single;
     return Column(
       mainAxisSize: shrinkWrap ? MainAxisSize.min : MainAxisSize.max,
       crossAxisAlignment:
@@ -347,20 +399,23 @@ class MarkdownBody extends MarkdownWidget {
 class Markdown extends MarkdownWidget {
   /// Creates a scrolling widget that parses and displays Markdown.
   const Markdown({
-    Key key,
-    @required String data,
+    Key? key,
+    required String data,
     bool selectable = false,
-    MarkdownStyleSheet styleSheet,
-    MarkdownStyleSheetBaseTheme styleSheetTheme,
-    SyntaxHighlighter syntaxHighlighter,
-    MarkdownTapLinkCallback onTapLink,
-    String imageDirectory,
-    List<md.BlockSyntax> blockSyntaxes,
-    List<md.InlineSyntax> inlineSyntaxes,
-    md.ExtensionSet extensionSet,
-    MarkdownImageBuilder imageBuilder,
-    MarkdownCheckboxBuilder checkboxBuilder,
+    MarkdownStyleSheet? styleSheet,
+    MarkdownStyleSheetBaseTheme? styleSheetTheme,
+    SyntaxHighlighter? syntaxHighlighter,
+    MarkdownTapLinkCallback? onTapLink,
+    VoidCallback? onTapText,
+    String? imageDirectory,
+    List<md.BlockSyntax>? blockSyntaxes,
+    List<md.InlineSyntax>? inlineSyntaxes,
+    md.ExtensionSet? extensionSet,
+    MarkdownImageBuilder? imageBuilder,
+    MarkdownCheckboxBuilder? checkboxBuilder,
     Map<String, MarkdownElementBuilder> builders = const {},
+    MarkdownListItemCrossAxisAlignment listItemCrossAxisAlignment =
+        MarkdownListItemCrossAxisAlignment.baseline,
     this.padding = const EdgeInsets.all(16.0),
     this.controller,
     this.physics,
@@ -373,6 +428,7 @@ class Markdown extends MarkdownWidget {
           styleSheetTheme: styleSheetTheme,
           syntaxHighlighter: syntaxHighlighter,
           onTapLink: onTapLink,
+          onTapText: onTapText,
           imageDirectory: imageDirectory,
           blockSyntaxes: blockSyntaxes,
           inlineSyntaxes: inlineSyntaxes,
@@ -380,6 +436,7 @@ class Markdown extends MarkdownWidget {
           imageBuilder: imageBuilder,
           checkboxBuilder: checkboxBuilder,
           builders: builders,
+          listItemCrossAxisAlignment: listItemCrossAxisAlignment,
         );
 
   /// The amount of space by which to inset the children.
@@ -388,12 +445,12 @@ class Markdown extends MarkdownWidget {
   /// An object that can be used to control the position to which this scroll view is scrolled.
   ///
   /// See also: [ScrollView.controller]
-  final ScrollController controller;
+  final ScrollController? controller;
 
   /// How the scroll view should respond to user input.
   ///
   /// See also: [ScrollView.physics]
-  final ScrollPhysics physics;
+  final ScrollPhysics? physics;
 
   /// Whether the extent of the scroll view in the scroll direction should be
   /// determined by the contents being viewed.
@@ -402,13 +459,13 @@ class Markdown extends MarkdownWidget {
   final bool shrinkWrap;
 
   @override
-  Widget build(BuildContext context, List<Widget> children) {
+  Widget build(BuildContext context, List<Widget>? children) {
     return ListView(
       padding: padding,
       controller: controller,
       physics: physics,
       shrinkWrap: shrinkWrap,
-      children: children,
+      children: children!,
     );
   }
 }
@@ -425,7 +482,7 @@ class TaskListSyntax extends md.InlineSyntax {
     md.Element el = md.Element.withTag('input');
     el.attributes['type'] = 'checkbox';
     el.attributes['disabled'] = 'true';
-    el.attributes['checked'] = '${match[1].trim().isNotEmpty}';
+    el.attributes['checked'] = '${match[1]!.trim().isNotEmpty}';
     parser.addNode(el);
     return true;
   }

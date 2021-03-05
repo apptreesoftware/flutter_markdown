@@ -1,3 +1,28 @@
+## 0.6.0
+
+ * Null safety release
+ * Added stylesheet option listBulletPadding
+ * Fixed blockquote inline styling
+ * Added onTapText handler for selectable text
+
+## 0.6.0-nullsafety.2
+
+ * Dependencies updated for null safety
+
+## 0.6.0-nullsafety.1
+
+ * Fix null safety on web
+ * Image test mocks fixed for null safety
+
+## 0.6.0-nullsafety.0
+
+ * Initial null safety migration.
+
+## 0.5.2
+
+ * Added `MarkdownListItemCrossAxisAlignment` to allow for intrinsic height
+   measurements of lists.
+
 ## 0.5.1
 
  * Fix user defined builders 
