@@ -77,10 +77,12 @@ packages:
   markdown:
     dependency: transitive
     description:
-      name: markdown
-      url: "https://pub.dartlang.org"
-    source: hosted
-    version: "4.0.0"
+      path: "."
+      ref: HEAD
+      resolved-ref: adf0f0fc88b01450a5e6506c847963abd75d64f0
+      url: "https://github.com/apptreesoftware/markdown.git"
+    source: git
+    version: "4.0.1-dev"
   matcher:
     dependency: transitive
     description:

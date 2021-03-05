@@ -568,7 +568,7 @@ class MarkdownBuilder implements md.NodeVisitor {
           textAlign: textAlign,
           child: Wrap(
             alignment: wrapAlignment,
-            children: children,
+            children: children as List<Widget>,
           ),
         ),
       ),
