@@ -774,6 +774,8 @@ class _ScrollViewWithScrollBarState extends State<ScrollViewWithScrollBar> {
     return Scrollbar(
       child: SingleChildScrollView(
         child: widget.child,
+        padding: widget.padding,
+        scrollDirection: widget.scrollDirection,
       ),
     );
   }
