@@ -195,7 +195,7 @@ class MarkdownBuilder implements md.NodeVisitor {
       } else if (tag == 'table') {
         _tables.add(_TableElement());
       } else if (tag == 'tr') {
-        final length = _tables.single.rows.length;
+        // final length = _tables.single.rows.length;
         BoxDecoration? decoration =
             styleSheet.tableCellsDecoration as BoxDecoration?;
         //if (length == 0 || length % 2 == 1) decoration = null;
@@ -289,12 +289,10 @@ class MarkdownBuilder implements md.NodeVisitor {
       child = builders[_blocks.last.tag!]!
           .visitText(text, styleSheet.styles[_blocks.last.tag!]);
     } else if (_blocks.last.tag == 'pre') {
-      child = Scrollbar(
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: styleSheet.codeblockPadding,
-          child: _buildRichText(delegate.formatText(styleSheet, text.text)),
-        ),
+      child = ScrollViewWithScrollBar(
+        scrollDirection: Axis.horizontal,
+        padding: styleSheet.codeblockPadding,
+        child: _buildRichText(delegate.formatText(styleSheet, text.text)),
       );
     } else {
       child = _buildRichText(
@@ -392,21 +390,15 @@ class MarkdownBuilder implements md.NodeVisitor {
         );
 
         if (styleSheet.tableColumnWidth is IntrinsicColumnWidth) {
-          var scrollController = ScrollController();
           child = SafeArea(
             top: false,
             right: false,
             left: false,
             bottom: true,
-            child: Scrollbar(
-              controller: scrollController,
-              isAlwaysShown: true,
-              child: SingleChildScrollView(
-                controller: scrollController,
-                scrollDirection: Axis.horizontal,
-                child: IntrinsicWidth(
-                  child: child,
-                ),
+            child: ScrollViewWithScrollBar(
+              scrollDirection: Axis.horizontal,
+              child: IntrinsicWidth(
+                child: child,
               ),
             ),
           );
@@ -748,5 +740,41 @@ class MarkdownBuilder implements md.NodeVisitor {
         textAlign: textAlign ?? TextAlign.start,
       );
     }
+  }
+}
+
+class ScrollViewWithScrollBar extends StatefulWidget {
+  final Widget child;
+  final EdgeInsets? padding;
+  final Axis scrollDirection;
+
+  const ScrollViewWithScrollBar(
+      {Key? key,
+      required this.child,
+      this.padding,
+      required this.scrollDirection})
+      : super(key: key);
+
+  @override
+  _ScrollViewWithScrollBarState createState() =>
+      _ScrollViewWithScrollBarState();
+}
+
+class _ScrollViewWithScrollBarState extends State<ScrollViewWithScrollBar> {
+  ScrollController _scrollController = new ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scrollbar(
+      child: SingleChildScrollView(
+        child: widget.child,
+      ),
+    );
   }
 }
